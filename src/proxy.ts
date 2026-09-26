@@ -22,9 +22,12 @@ export async function proxy(req: NextRequest) {
   );
   if (!needsAuth) return NextResponse.next();
 
+  // Auth.js sets `__Secure-authjs.session-token` on HTTPS (Vercel).
+  // getToken defaults to the non-secure cookie name unless secureCookie is true.
   const token = await getToken({
     req,
     secret: process.env.AUTH_SECRET,
+    secureCookie: true,
   });
 
   if (!token) {

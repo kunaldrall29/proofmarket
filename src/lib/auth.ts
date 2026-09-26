@@ -61,19 +61,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     async jwt({ token, user }) {
+      // Only write identity on initial sign-in — avoid a DB round-trip on every request.
       if (user) {
         token.id = user.id;
         token.role = user.role ?? "USER";
-      } else if (token.id) {
-        const dbUser = await prisma.user.findUnique({
-          where: { id: token.id as string },
-          select: { role: true, name: true, email: true },
-        });
-        if (dbUser) {
-          token.role = dbUser.role;
-          token.name = dbUser.name;
-          token.email = dbUser.email;
-        }
+        token.name = user.name;
+        token.email = user.email;
       }
       return token;
     },

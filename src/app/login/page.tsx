@@ -18,18 +18,23 @@ function LoginForm() {
     setLoading(true);
     setError(null);
     const fd = new FormData(e.currentTarget);
-    const res = await signIn("credentials", {
-      email: String(fd.get("email")),
-      password: String(fd.get("password")),
-      redirect: false,
-    });
-    setLoading(false);
-    if (res?.error) {
-      setError("Invalid email or password.");
-      return;
+    try {
+      const res = await signIn("credentials", {
+        email: String(fd.get("email")),
+        password: String(fd.get("password")),
+        redirect: false,
+      });
+      if (res?.error) {
+        setError("Invalid email or password.");
+        return;
+      }
+      router.replace(params.get("next") || "/home");
+      router.refresh();
+    } catch {
+      setError("Sign-in failed. Please try again.");
+    } finally {
+      setLoading(false);
     }
-    router.push(params.get("next") || "/home");
-    router.refresh();
   }
 
   return (
