@@ -1,0 +1,256 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Sex {
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT
+}
+
+enum ReportCategory {
+  GENERAL
+  DIABETES
+  CARDIAC
+  ONCOLOGY
+  KIDNEY_LIVER
+}
+
+enum ReportSourceType {
+  IMAGE
+  TEXT
+}
+
+enum ReportStatus {
+  PENDING
+  ANALYZING
+  READY
+  FAILED
+}
+
+enum AppointmentStatus {
+  UPCOMING
+  PAST
+  CANCELLED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  name          String?
+  age           Int?
+  sex           Sex?
+  role          Role      @default(USER)
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts         Account[]
+  sessions         Session[]
+  reports          Report[]
+  doctors          Doctor[]
+  appointments     Appointment[]
+  medicines        Medicine[]
+  wellnessEntries  WellnessEntry[]
+  waitlistEntries  ServiceWaitlist[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model ServiceCategory {
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  name         String
+  description  String
+  iconKey      String
+  sortOrder    Int      @default(0)
+  isActive     Boolean  @default(true)
+  isPlaceholder Boolean @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("service_categories")
+}
+
+model Report {
+  id           String           @id @default(cuid())
+  userId       String
+  category     ReportCategory
+  sourceType   ReportSourceType
+  storageUrl   String?
+  storagePath  String?
+  rawText      String?          @db.Text
+  status       ReportStatus     @default(PENDING)
+  errorMessage String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  analysis ReportAnalysis?
+
+  @@index([userId, createdAt])
+  @@map("reports")
+}
+
+model ReportAnalysis {
+  id                 String   @id @default(cuid())
+  reportId           String   @unique
+  summary            String   @db.Text
+  findings           Json
+  possibleConditions Json
+  nextSteps          Json
+  trendsNoted        String?  @db.Text
+  model              String
+  disclaimerVersion  String   @default("v1")
+  createdAt          DateTime @default(now())
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@map("report_analyses")
+}
+
+model Doctor {
+  id           String   @id @default(cuid())
+  userId       String
+  name         String
+  specialty    String
+  contactEmail String?
+  contactPhone String?
+  notes        String?  @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+
+  @@index([userId])
+  @@map("doctors")
+}
+
+model Appointment {
+  id        String            @id @default(cuid())
+  userId    String
+  doctorId  String?
+  title     String
+  startsAt  DateTime
+  endsAt    DateTime?
+  location  String?
+  notes     String?           @db.Text
+  status    AppointmentStatus @default(UPCOMING)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  doctor Doctor? @relation(fields: [doctorId], references: [id], onDelete: SetNull)
+
+  @@index([userId, startsAt])
+  @@map("appointments")
+}
+
+model Medicine {
+  id        String    @id @default(cuid())
+  userId    String
+  name      String
+  dosage    String?
+  frequency String?
+  startedOn DateTime?
+  endedOn   DateTime?
+  notes     String?   @db.Text
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("medicines")
+}
+
+model WellnessEntry {
+  id          String   @id @default(cuid())
+  userId      String
+  mood        Int?
+  journalText String?  @db.Text
+  entryDate   DateTime @db.Date
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, entryDate])
+  @@map("wellness_entries")
+}
+
+model ServiceWaitlist {
+  id          String   @id @default(cuid())
+  userId      String?
+  email       String
+  serviceSlug String
+  createdAt   DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([serviceSlug])
+  @@map("service_waitlist")
+}
+
+model UsageEvent {
+  id        String   @id @default(cuid())
+  eventType String
+  category  String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([eventType, createdAt])
+  @@map("usage_events")
+}
