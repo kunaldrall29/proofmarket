@@ -85,7 +85,7 @@ export default function SignupPage() {
           </label>
         </div>
         {error ? <p className="text-sm text-danger">{error}</p> : null}
-        <Button type="submit" className="w-full" disabled={loading}>
+        <Button type="submit" className="w-full min-h-12" disabled={loading}>
           {loading ? "Creating…" : "Sign up"}
         </Button>
       </form>

@@ -75,24 +75,24 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-12 space-y-10">
+    <div className="mx-auto max-w-5xl px-4 py-8 sm:py-12 space-y-8 sm:space-y-10">
       <div>
-        <h1 className="font-display text-3xl">Admin</h1>
-        <p className="mt-2 text-muted-foreground">
+        <h1 className="font-display text-2xl sm:text-3xl">Admin</h1>
+        <p className="mt-2 text-sm text-muted-foreground sm:text-base">
           Server-enforced admin tools. Aggregate usage is anonymized (no PHI in event payloads).
         </p>
       </div>
 
       <section className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-[1.25rem] border bg-card p-5">
+        <div className="rounded-[1.25rem] border bg-card p-4 sm:p-5">
           <p className="text-sm text-muted-foreground">Users</p>
           <p className="mt-2 font-display text-3xl">{data.aggregates.userCount}</p>
         </div>
-        <div className="rounded-[1.25rem] border bg-card p-5">
+        <div className="rounded-[1.25rem] border bg-card p-4 sm:p-5">
           <p className="text-sm text-muted-foreground">Reports analyzed</p>
           <p className="mt-2 font-display text-3xl">{data.aggregates.reportCount}</p>
         </div>
-        <div className="rounded-[1.25rem] border bg-card p-5">
+        <div className="rounded-[1.25rem] border bg-card p-4 sm:p-5">
           <p className="text-sm text-muted-foreground">Usage events</p>
           <ul className="mt-2 space-y-1 text-sm">
             {data.aggregates.usage.map((u) => (
@@ -105,8 +105,29 @@ export default function AdminPage() {
       </section>
 
       <section>
-        <h2 className="font-display text-2xl mb-4">Users</h2>
-        <div className="overflow-x-auto rounded-[1.25rem] border bg-card">
+        <h2 className="font-display text-xl sm:text-2xl mb-4">Users</h2>
+
+        <div className="space-y-3 md:hidden">
+          {data.users.map((u) => (
+            <article key={u.id} className="rounded-[1.25rem] border bg-card p-4">
+              <p className="font-medium">{u.name || "—"}</p>
+              <p className="mt-1 break-all text-sm text-muted-foreground">{u.email}</p>
+              <p className="mt-2 text-sm">
+                {u.role} · {u._count.reports} reports
+              </p>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="mt-3 min-h-11 w-full"
+                onClick={() => setRole(u.id, u.role === "ADMIN" ? "USER" : "ADMIN")}
+              >
+                Make {u.role === "ADMIN" ? "user" : "admin"}
+              </Button>
+            </article>
+          ))}
+        </div>
+
+        <div className="hidden overflow-x-auto rounded-[1.25rem] border bg-card md:block">
           <table className="w-full min-w-[640px] text-left text-sm">
             <thead>
               <tr className="border-b text-muted-foreground">
@@ -141,12 +162,12 @@ export default function AdminPage() {
       </section>
 
       <section>
-        <h2 className="font-display text-2xl mb-4">Service categories</h2>
+        <h2 className="font-display text-xl sm:text-2xl mb-4">Service categories</h2>
         <div className="space-y-2">
           {data.services.map((s) => (
             <div
               key={s.id}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card px-4 py-3"
+              className="flex flex-col gap-3 rounded-2xl border bg-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
                 <p className="font-medium">
@@ -158,7 +179,12 @@ export default function AdminPage() {
                 </p>
                 <p className="text-sm text-muted-foreground">{s.isActive ? "Active" : "Hidden"}</p>
               </div>
-              <Button size="sm" variant="ghost" onClick={() => toggleService(s.slug)}>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="min-h-11 w-full sm:w-auto"
+                onClick={() => toggleService(s.slug)}
+              >
                 Toggle visibility
               </Button>
             </div>
@@ -167,7 +193,7 @@ export default function AdminPage() {
       </section>
 
       <section>
-        <h2 className="font-display text-2xl mb-4">Waitlist (anonymized counts)</h2>
+        <h2 className="font-display text-xl sm:text-2xl mb-4">Waitlist (anonymized counts)</h2>
         <ul className="space-y-2 text-sm">
           {data.aggregates.waitlist.length === 0 ? (
             <li className="text-muted-foreground">No waitlist entries yet.</li>

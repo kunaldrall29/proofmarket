@@ -34,7 +34,7 @@ export function ServiceCard({ href, name, description, iconKey, badge, className
     <Link
       href={href}
       className={cn(
-        "group relative block rounded-[1.25rem] border bg-card p-5 shadow-[var(--shadow-soft)] transition hover:-translate-y-0.5 hover:border-primary/40 focus-ring",
+        "group relative block rounded-[1.25rem] border bg-card p-4 shadow-[var(--shadow-soft)] transition hover:-translate-y-0.5 hover:border-primary/40 focus-ring active:scale-[0.99] sm:p-5",
         className,
       )}
     >
