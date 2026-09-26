@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import { analysisResultSchema, type AnalysisResult } from "@/lib/validations";
 import type { ReportCategory } from "@prisma/client";
 
@@ -7,6 +7,8 @@ You help patients understand lab and medical report values in plain language.
 You NEVER diagnose. You NEVER claim certainty about disease.
 Always frame findings as "possible topics to discuss with a doctor."
 Return ONLY valid JSON matching the schema. No markdown fences.`;
+
+const DEFAULT_MODEL = process.env.XAI_MODEL || "grok-2-vision-1212";
 
 function buildUserPrompt(input: {
   category: ReportCategory;
@@ -38,6 +40,17 @@ Return JSON with this exact shape:
 }`;
 }
 
+function getXaiClient() {
+  const apiKey = process.env.XAI_API_KEY;
+  if (!apiKey) {
+    throw new Error("AI analysis is not configured. Set XAI_API_KEY on the server.");
+  }
+  return new OpenAI({
+    apiKey,
+    baseURL: "https://api.x.ai/v1",
+  });
+}
+
 export async function analyzeReportContent(input: {
   category: ReportCategory;
   text?: string;
@@ -45,49 +58,42 @@ export async function analyzeReportContent(input: {
   imageMediaType?: "image/jpeg" | "image/png" | "image/webp" | "image/gif";
   historyContext?: string;
 }): Promise<AnalysisResult> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error(
-      "AI analysis is not configured. Set ANTHROPIC_API_KEY on the server.",
-    );
-  }
+  const client = getXaiClient();
+  const prompt = buildUserPrompt({
+    category: input.category,
+    text: input.text,
+    historyContext: input.historyContext,
+  });
 
-  const client = new Anthropic({ apiKey });
-  const content: Anthropic.MessageCreateParams["messages"][0]["content"] = [];
+  const userContent: OpenAI.Chat.ChatCompletionContentPart[] = [];
 
   if (input.imageBase64 && input.imageMediaType) {
-    content.push({
-      type: "image",
-      source: {
-        type: "base64",
-        media_type: input.imageMediaType,
-        data: input.imageBase64,
+    userContent.push({
+      type: "image_url",
+      image_url: {
+        url: `data:${input.imageMediaType};base64,${input.imageBase64}`,
       },
     });
   }
 
-  content.push({
-    type: "text",
-    text: buildUserPrompt({
-      category: input.category,
-      text: input.text,
-      historyContext: input.historyContext,
-    }),
-  });
+  userContent.push({ type: "text", text: prompt });
 
-  const response = await client.messages.create({
-    model: "claude-sonnet-4-20250514",
+  const response = await client.chat.completions.create({
+    model: DEFAULT_MODEL,
     max_tokens: 4096,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: "user", content }],
+    temperature: 0.2,
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: userContent },
+    ],
   });
 
-  const textBlock = response.content.find((b) => b.type === "text");
-  if (!textBlock || textBlock.type !== "text") {
+  const rawText = response.choices[0]?.message?.content?.trim();
+  if (!rawText) {
     throw new Error("The AI returned an empty response. Please try again.");
   }
 
-  let raw = textBlock.text.trim();
+  let raw = rawText;
   if (raw.startsWith("```")) {
     raw = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
   }
@@ -109,6 +115,10 @@ export async function analyzeReportContent(input: {
   }
 
   return result.data;
+}
+
+export function getAnalysisModelName() {
+  return DEFAULT_MODEL;
 }
 
 export async function buildHistoryContext(userId: string, limit = 3) {

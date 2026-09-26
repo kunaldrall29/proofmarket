@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { analyzeReportContent, buildHistoryContext } from "@/lib/anthropic";
+import {
+  analyzeReportContent,
+  buildHistoryContext,
+  getAnalysisModelName,
+} from "@/lib/xai";
 import { DISCLAIMER_VERSION } from "@/lib/constants";
 import type { ReportCategory } from "@prisma/client";
 
@@ -104,7 +108,7 @@ export async function POST(req: Request) {
           possibleConditions: analysis.possibleConditions,
           nextSteps: analysis.nextSteps,
           trendsNoted: analysis.trendsNoted ?? null,
-          model: "claude-sonnet-4-20250514",
+          model: getAnalysisModelName(),
           disclaimerVersion: DISCLAIMER_VERSION,
         },
       });
